@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="th">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MONNN Control Center</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&amp;display=swap" rel="stylesheet">
+  <script src="/_sdk/data_sdk.js"></script>
+  <style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;display:flex;justify-content:center;align-items:center;font-family:'Space Mono',monospace;}
+.viewport{width:100vw;height:calc(100 * min(var(--vh, 1vh), 1vh));display:flex;justify-content:center;align-items:center;overflow:hidden;}
+.desktop-frame{width:900px;height:1600px;position:relative;overflow:hidden;background-image:url('https://img2.pic.in.th/11141414-1.png');background-size:100% 100%;background-repeat:no-repeat;transform-origin:center center;flex:none;}
+.content-scroll{position:absolute;top:378px;left:58px;width:720px;height:790px;overflow-y:auto;overflow-x:hidden;}
+.content-scroll::-webkit-scrollbar{width:16px;}
+.content-scroll::-webkit-scrollbar-track{background:#c0c0c0;}
+.content-scroll::-webkit-scrollbar-thumb{background:#999;border:2px solid #fff;}
+.floating-admin-btn{position:absolute;left:20px;bottom:20px;width:200px;height:auto;cursor:pointer;opacity:0.92;z-index:999;user-select:none;transition:transform 0.2s ease,opacity 0.2s ease;pointer-events:auto;}
+.floating-admin-btn:hover{transform:scale(1.03);opacity:1;}
+.win95-panel{position:absolute;top:400px;left:200px;width:500px;background:#c0c0c0;border:3px outset #fff;box-shadow:4px 4px 0 #000;z-index:100;display:none;font-size:13px;}
+.win95-title{background:linear-gradient(90deg,#000080,#1084d0);color:#fff;padding:3px 6px;font-weight:700;font-size:12px;display:flex;justify-content:space-between;align-items:center;}
+.win95-close{background:#c0c0c0;border:2px outset #fff;width:18px;height:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;font-weight:700;}
+.win95-close:active{border:2px inset #888;}
+.win95-body{padding:10px;display:flex;flex-direction:column;gap:8px;}
+.win95-btn{background:#c0c0c0;border:2px outset #fff;padding:4px 12px;cursor:pointer;font-family:'Space Mono',monospace;font-size:12px;}
+.win95-btn:active{border:2px inset #888;}
+.win95-input{border:2px inset #888;padding:3px 6px;font-family:'Space Mono',monospace;font-size:12px;background:#fff;}
+.win95-textarea{border:2px inset #888;padding:4px;font-family:'Space Mono',monospace;font-size:11px;background:#fff;resize:none;height:80px;}
+.dept-header{font-weight:700;font-size:13px;color:#000080;margin:12px 0 4px 0;padding:2px 8px;border-bottom:1px solid #808080;text-transform:uppercase;}
+.project-row{display:flex;align-items:center;gap:16px;padding:4px 6px;font-size:13px;}
+.project-row span{width:520px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.project-row:hover{background:rgba(0,0,128,0.05);}
+.open-btn{margin-left:0;flex:none;width:52px;padding:2px 0;text-align:center;background:#c0c0c0;border:2px outset #fff;cursor:pointer;font-family:'Space Mono',monospace;font-size:10px;}
+.open-btn:active{border:2px inset #888;}
+.search-bar{display:none;}
+.search-input{width:100%;border:2px inset #888;padding:4px 8px;font-family:'Space Mono',monospace;font-size:12px;background:#fff;}
+.hidden{display:none!important;}
+.paste-area,.manual-area{display:none;}
+.overlay-art{position:fixed;inset:0;width:100vw;height:100vh;background-image:url('https://img1.pic.in.th/images/11141414-2.png');background-size:auto 96%;background-position:center center;background-repeat:no-repeat;pointer-events:none;z-index:9999;}
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <script src="/_sdk/resizing_sdk.js"></script>
+  <script src="/_sdk/telemetry_sdk.js"></script>
+ </head>
+ <body data-template-id="__page-root">
+  <div class="viewport">
+   <div class="desktop-frame">
+    <img id="adminBtn" data-template-id="admin-button" class="floating-admin-btn canva-image" alt="Nostalgic Y2K floating widget button">
+    <div class="content-scroll" id="contentArea">
+     <div class="search-bar"><input class="search-input" id="searchInput" type="text" placeholder="Search projects...">
+     </div>
+     <div id="projectList"></div>
+     <div class="win95-panel" id="controlPanel">
+      <div class="win95-title"><span>Data Control Panel</span>
+       <div class="win95-close" id="panelClose">
+        x
+       </div>
+      </div>
+      <div class="win95-body"><button class="win95-btn" id="btnImportCSV">IMPORT CSV</button> <button class="win95-btn" id="btnPaste">PASTE DATA</button>
+       <div class="paste-area" id="pasteArea"><textarea class="win95-textarea" id="pasteText" placeholder="department,project_name,url"></textarea> <button class="win95-btn" id="btnPasteConfirm">OK</button>
+       </div><button class="win95-btn" id="btnManual">ADD MANUAL</button>
+       <div class="manual-area" id="manualArea"><input class="win95-input" id="manDept" placeholder="Department"> <input class="win95-input" id="manName" placeholder="Project Name"> <input class="win95-input" id="manUrl" placeholder="URL"> <button class="win95-btn" id="btnManualConfirm">ADD</button>
+       </div><button class="win95-btn" id="btnClearAll" style="color:#a00;">CLEAR ALL</button>
+       <div id="statusMsg" style="font-size:11px;color:#006;min-height:16px;"></div>
+      </div>
+     </div>
+    </div>
+   </div><input type="file" id="csvFile" accept=".csv" style="display:none;">
+   <script>
+let allData = [];
+
+const dataHandler = {
+  onDataChanged(data) {
+    allData = data;
+    renderProjects();
+  }
+};
+
+async function initApp() {
+  const r = await window.dataSdk.init(dataHandler);
+  if (!r.isOk) console.error('SDK init failed');
+}
+initApp();
+
+function renderProjects() {
+  const filtered = allData;
+  const grouped = {};
+  filtered.forEach(d => {
+    const dept = d.department || 'Other';
+    if (!grouped[dept]) grouped[dept] = [];
+    grouped[dept].push(d);
+  });
+  const list = document.getElementById('projectList');
+  list.querySelectorAll('.dept-section').forEach(e => e.remove());
+  if (filtered.length === 0) return;
+  const depts = Object.keys(grouped).sort();
+  depts.forEach(dept => {
+    const sec = document.createElement('div');
+    sec.className = 'dept-section';
+    sec.innerHTML = `<div class="dept-header">${dept}</div>`;
+    grouped[dept].forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'project-row';
+      row.innerHTML = `<span>- ${p.project_name||'Untitled'}</span><button class="open-btn" onclick="window.open('${(p.url||'#').replace(/'/g,"\\'")}','_blank')">OPEN</button>`;
+      sec.appendChild(row);
+    });
+    list.appendChild(sec);
+  });
+}
+
+document.getElementById('searchInput').addEventListener('input', renderProjects);
+
+document.getElementById('adminBtn').addEventListener('click', () => {
+  const cp = document.getElementById('controlPanel');
+  cp.style.display = cp.style.display === 'block' ? 'none' : 'block';
+});
+document.getElementById('panelClose').addEventListener('click', () => {
+  document.getElementById('controlPanel').style.display = 'none';
+});
+
+document.getElementById('btnImportCSV').addEventListener('click', () => document.getElementById('csvFile').click());
+document.getElementById('csvFile').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const text = await file.text();
+  await parseAndSave(text);
+  e.target.value = '';
+});
+
+document.getElementById('btnPaste').addEventListener('click', () => {
+  const pa = document.getElementById('pasteArea');
+  pa.style.display = pa.style.display === 'block' ? 'none' : 'block';
+});
+document.getElementById('btnPasteConfirm').addEventListener('click', async () => {
+  const text = document.getElementById('pasteText').value;
+  await parseAndSave(text);
+  document.getElementById('pasteText').value = '';
+  document.getElementById('pasteArea').style.display = 'none';
+});
+
+document.getElementById('btnManual').addEventListener('click', () => {
+  const ma = document.getElementById('manualArea');
+  ma.style.display = ma.style.display === 'block' ? 'none' : 'block';
+});
+document.getElementById('btnManualConfirm').addEventListener('click', async () => {
+  const dept = document.getElementById('manDept').value.trim();
+  const name = document.getElementById('manName').value.trim();
+  const url = document.getElementById('manUrl').value.trim();
+  if (!dept || !name) { showStatus('Need department & name'); return; }
+  if (allData.length >= 999) { showStatus('Limit 999 reached!'); return; }
+  const r = await window.dataSdk.create({ department: dept, project_name: name, url: url || '#' });
+  if (r.isOk) { showStatus('Added!'); document.getElementById('manDept').value=''; document.getElementById('manName').value=''; document.getElementById('manUrl').value=''; }
+  else showStatus('Error adding');
+});
+
+document.getElementById('btnClearAll').addEventListener('click', async () => {
+  showStatus('Clearing...');
+  for (const item of [...allData]) {
+    await window.dataSdk.delete(item);
+  }
+  showStatus('Cleared!');
+});
+
+async function parseAndSave(text) {
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  let count = 0;
+  for (const line of lines) {
+    if (line.toLowerCase().startsWith('department,')) continue;
+    const parts = line.split(',').map(s => s.trim());
+    if (parts.length < 2) continue;
+    if (allData.length + count >= 999) { showStatus('Limit 999 reached!'); break; }
+    const r = await window.dataSdk.create({ department: parts[0], project_name: parts[1], url: parts[2] || '#' });
+    if (r.isOk) count++;
+  }
+  showStatus(`Imported ${count} items`);
+}
+
+function showStatus(msg) {
+  document.getElementById('statusMsg').textContent = msg;
+  setTimeout(() => { document.getElementById('statusMsg').textContent = ''; }, 3000);
+}
+
+function scaleFrame(){
+  const frame = document.querySelector('.desktop-frame');
+  const scaleX = window.innerWidth / 900;
+  const scaleY = window.innerHeight / 1600;
+  frame.style.transform = `scale(${Math.min(scaleX, scaleY)})`;
+}
+window.addEventListener('resize', scaleFrame);
+scaleFrame();
+   </script>
+   <script src="/_sdk/editing_sdk.js"></script>
+  </div>
+  <div class="overlay-art"></div>
+ </body>
+</html>
