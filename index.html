@@ -6,7 +6,6 @@
   <title>MONNN Control Center</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&amp;display=swap" rel="stylesheet">
-  <script src="/_sdk/data_sdk.js"></script>
   <style>
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;display:flex;justify-content:center;align-items:center;font-family:'Space Mono',monospace;}
 .viewport{width:100vw;height:calc(100 * min(var(--vh, 1vh), 1vh));display:flex;justify-content:center;align-items:center;overflow:hidden;}
@@ -39,8 +38,6 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;displa
 .overlay-art{position:fixed;inset:0;width:100vw;height:100vh;background-image:url('https://img1.pic.in.th/images/11141414-2.png');background-size:auto 96%;background-position:center center;background-repeat:no-repeat;pointer-events:none;z-index:9999;}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
-  <script src="/_sdk/resizing_sdk.js"></script>
-  <script src="/_sdk/telemetry_sdk.js"></script>
  </head>
  <body data-template-id="__page-root">
   <div class="viewport">
@@ -317,7 +314,6 @@ function scaleFrame(){
 window.addEventListener('resize', scaleFrame);
 scaleFrame();
    </script>
-   <script src="/_sdk/editing_sdk.js"></script>
   </div>
   <div class="overlay-art"></div>
  </body>
