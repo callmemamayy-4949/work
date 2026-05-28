@@ -45,7 +45,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;displa
  <body data-template-id="__page-root">
   <div class="viewport">
    <div class="desktop-frame">
-    <img id="adminBtn" data-template-id="admin-button" class="floating-admin-btn canva-image" alt="Nostalgic Y2K floating widget button">
+    <img id="adminBtn" data-template-id="admin-button" class="floating-admin-btn canva-image" alt="Nostalgic Y2K floating widget button" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='190' viewBox='0 0 480 190'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%23fff7c8'/%3E%3Cstop offset='.45' stop-color='%23ff9bd2'/%3E%3Cstop offset='1' stop-color='%238de7ff'/%3E%3C/linearGradient%3E%3Cfilter id='s' x='-20%25' y='-20%25' width='140%25' height='140%25'%3E%3CfeDropShadow dx='8' dy='10' stdDeviation='0' flood-color='%23000' flood-opacity='.9'/%3E%3C/filter%3E%3C/defs%3E%3Cg filter='url(%23s)'%3E%3Cpath d='M38 28h360l42 42v82H82l-44-44z' fill='url(%23g)' stroke='%23000' stroke-width='8'/%3E%3Cpath d='M58 49h320l28 28v50H96l-38-38z' fill='%23fff' opacity='.55'/%3E%3Ccircle cx='382' cy='60' r='16' fill='%23fff35b' stroke='%23000' stroke-width='6'/%3E%3Ccircle cx='423' cy='100' r='14' fill='%23ff5cad' stroke='%23000' stroke-width='6'/%3E%3Ctext x='93' y='110' font-family='monospace' font-size='48' font-weight='700' fill='%23000'%3EADMIN%3C/text%3E%3Ctext x='98' y='145' font-family='monospace' font-size='22' font-weight='700' fill='%23000080'%3ECONTROL%3C/text%3E%3C/g%3E%3C/svg%3E">
     <div class="content-scroll" id="contentArea">
      <div class="search-bar"><input class="search-input" id="searchInput" type="text" placeholder="Search projects...">
      </div>
@@ -66,8 +66,9 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;displa
      </div>
     </div>
    </div><input type="file" id="csvFile" accept=".csv" style="display:none;">
-   <script>
+<script>
 let allData = [];
+const STORAGE_KEY = 'monnn-control-center-projects';
 
 const dataHandler = {
   onDataChanged(data) {
@@ -76,14 +77,66 @@ const dataHandler = {
   }
 };
 
+function createLocalDataSdk() {
+  let handler = null;
+  function readData() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const data = raw ? JSON.parse(raw) : [];
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('Local data read failed', error);
+      return [];
+    }
+  }
+  function writeData(data) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    if (handler) handler.onDataChanged([...data]);
+  }
+  return {
+    async init(nextHandler) {
+      handler = nextHandler;
+      handler.onDataChanged(readData());
+      return { isOk: true };
+    },
+    async create(item) {
+      const data = readData();
+      const saved = { ...item, id: item.id || `${Date.now()}-${Math.random().toString(16).slice(2)}` };
+      data.push(saved);
+      writeData(data);
+      return { isOk: true, data: saved };
+    },
+    async delete(item) {
+      const data = readData();
+      const index = data.findIndex(saved => saved.id === item.id);
+      if (index >= 0) data.splice(index, 1);
+      writeData(data);
+      return { isOk: true };
+    }
+  };
+}
+
 async function initApp() {
-  const r = await window.dataSdk.init(dataHandler);
-  if (!r.isOk) console.error('SDK init failed');
+  if (!window.dataSdk) window.dataSdk = createLocalDataSdk();
+  try {
+    const r = await window.dataSdk.init(dataHandler);
+    if (!r.isOk) console.error('SDK init failed');
+  } catch (error) {
+    console.error('SDK init failed, using local storage', error);
+    window.dataSdk = createLocalDataSdk();
+    await window.dataSdk.init(dataHandler);
+  }
 }
 initApp();
 
 function renderProjects() {
-  const filtered = allData;
+  const query = document.getElementById('searchInput').value.trim().toLowerCase();
+  const filtered = allData.filter(d => {
+    const dept = d.department || '';
+    const name = d.project_name || '';
+    const url = d.url || '';
+    return !query || `${dept} ${name} ${url}`.toLowerCase().includes(query);
+  });
   const grouped = {};
   filtered.forEach(d => {
     const dept = d.department || 'Other';
@@ -97,11 +150,24 @@ function renderProjects() {
   depts.forEach(dept => {
     const sec = document.createElement('div');
     sec.className = 'dept-section';
-    sec.innerHTML = `<div class="dept-header">${dept}</div>`;
+    const header = document.createElement('div');
+    header.className = 'dept-header';
+    header.textContent = dept;
+    sec.appendChild(header);
     grouped[dept].forEach(p => {
       const row = document.createElement('div');
       row.className = 'project-row';
-      row.innerHTML = `<span>- ${p.project_name||'Untitled'}</span><button class="open-btn" onclick="window.open('${(p.url||'#').replace(/'/g,"\\'")}','_blank')">OPEN</button>`;
+      const name = document.createElement('span');
+      const button = document.createElement('button');
+      name.textContent = `- ${p.project_name || 'Untitled'}`;
+      button.className = 'open-btn';
+      button.type = 'button';
+      button.textContent = 'OPEN';
+      button.addEventListener('click', () => {
+        window.open(normalizeUrl(p.url), '_blank', 'noopener,noreferrer');
+      });
+      row.appendChild(name);
+      row.appendChild(button);
       sec.appendChild(row);
     });
     list.appendChild(sec);
@@ -122,9 +188,15 @@ document.getElementById('btnImportCSV').addEventListener('click', () => document
 document.getElementById('csvFile').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  const text = await file.text();
-  await parseAndSave(text);
-  e.target.value = '';
+  try {
+    const text = await file.text();
+    await parseAndSave(text);
+  } catch (error) {
+    console.error('CSV import failed', error);
+    showStatus('CSV import error');
+  } finally {
+    e.target.value = '';
+  }
 });
 
 document.getElementById('btnPaste').addEventListener('click', () => {
@@ -148,7 +220,7 @@ document.getElementById('btnManualConfirm').addEventListener('click', async () =
   const url = document.getElementById('manUrl').value.trim();
   if (!dept || !name) { showStatus('Need department & name'); return; }
   if (allData.length >= 999) { showStatus('Limit 999 reached!'); return; }
-  const r = await window.dataSdk.create({ department: dept, project_name: name, url: url || '#' });
+  const r = await window.dataSdk.create({ department: dept, project_name: name, url: normalizeUrl(url) });
   if (r.isOk) { showStatus('Added!'); document.getElementById('manDept').value=''; document.getElementById('manName').value=''; document.getElementById('manUrl').value=''; }
   else showStatus('Error adding');
 });
@@ -162,17 +234,73 @@ document.getElementById('btnClearAll').addEventListener('click', async () => {
 });
 
 async function parseAndSave(text) {
-  const lines = text.trim().split('\n').filter(l => l.trim());
+  const rows = parseCsv(text);
   let count = 0;
-  for (const line of lines) {
-    if (line.toLowerCase().startsWith('department,')) continue;
-    const parts = line.split(',').map(s => s.trim());
-    if (parts.length < 2) continue;
-    if (allData.length + count >= 999) { showStatus('Limit 999 reached!'); break; }
-    const r = await window.dataSdk.create({ department: parts[0], project_name: parts[1], url: parts[2] || '#' });
+  const existingCount = allData.length;
+  const header = rows[0] || [];
+  const hasHeader = header.map(h => h.toLowerCase()).includes('department') || header.map(h => h.toLowerCase()).includes('project_name');
+  const start = hasHeader ? 1 : 0;
+  const deptIndex = hasHeader ? findColumn(header, ['department', 'dept']) : 0;
+  const nameIndex = hasHeader ? findColumn(header, ['project_name', 'project name', 'name', 'project']) : 1;
+  const urlIndex = hasHeader ? findColumn(header, ['url', 'link']) : 2;
+  for (let i = start; i < rows.length; i++) {
+    const parts = rows[i].map(s => s.trim());
+    const dept = parts[deptIndex] || '';
+    const name = parts[nameIndex] || '';
+    const url = parts[urlIndex] || '#';
+    if (!dept || !name) continue;
+    if (existingCount + count >= 999) { showStatus('Limit 999 reached!'); break; }
+    const r = await window.dataSdk.create({ department: dept, project_name: name, url: normalizeUrl(url) });
     if (r.isOk) count++;
   }
   showStatus(`Imported ${count} items`);
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let inQuotes = false;
+  const clean = text.replace(/^\uFEFF/, '');
+  for (let i = 0; i < clean.length; i++) {
+    const char = clean[i];
+    const next = clean[i + 1];
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        cell += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      row.push(cell);
+      cell = '';
+    } else if ((char === '\n' || char === '\r') && !inQuotes) {
+      if (char === '\r' && next === '\n') i++;
+      row.push(cell);
+      if (row.some(value => value.trim())) rows.push(row);
+      row = [];
+      cell = '';
+    } else {
+      cell += char;
+    }
+  }
+  row.push(cell);
+  if (row.some(value => value.trim())) rows.push(row);
+  return rows;
+}
+
+function findColumn(header, names) {
+  const normalized = header.map(h => h.trim().toLowerCase());
+  const index = normalized.findIndex(h => names.includes(h));
+  return index >= 0 ? index : names[0] === 'department' ? 0 : names[0] === 'project_name' ? 1 : 2;
+}
+
+function normalizeUrl(url) {
+  const value = (url || '#').trim();
+  if (!value || value === '#') return '#';
+  if (/^(https?:|mailto:|tel:)/i.test(value)) return value;
+  return `https://${value}`;
 }
 
 function showStatus(msg) {
