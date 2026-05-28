@@ -66,6 +66,30 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;displa
 <script>
 let allData = [];
 const STORAGE_KEY = 'monnn-control-center-projects';
+const DEFAULT_PROJECTS = [
+  { department: 'HQ SYSTEM', project_name: 'Air-4 Prompts Challenge', url: '#' },
+  { department: 'HQ SYSTEM', project_name: 'Dashboard AIR4 OKRs Calculation', url: '#' },
+  { department: 'R&D QUALITY CONTROL', project_name: 'Injector Brand Joint - FIXFIT', url: '#' },
+  { department: 'R&D QUALITY CONTROL', project_name: 'Injector Brand Joint - FORD', url: '#' },
+  { department: 'R&D QUALITY CONTROL', project_name: 'Injector Brand Joint - HONDA', url: '#' },
+  { department: 'R&D QUALITY CONTROL', project_name: 'Injector Brand Joint - HYUNDAI', url: '#' },
+  { department: 'R&D QUALITY CONTROL', project_name: 'Injector Brand Joint - ISUZU', url: '#' },
+  { department: 'R&D QUALITY CONTROL', project_name: 'Injector Brand Joint - KIA', url: '#' },
+  { department: 'R&D QUALITY CONTROL', project_name: 'Injector Brand Joint - MAZDA', url: '#' },
+  { department: 'R&D QUALITY CONTROL', project_name: 'Injector Brand Joint - MG', url: '#' },
+  { department: 'R&D QUALITY CONTROL', project_name: 'Injector Brand Joint - MITSUBISHI', url: '#' },
+  { department: 'R&D QUALITY CONTROL', project_name: 'Injector Brand Joint - NISSAN', url: '#' },
+  { department: 'R&D QUALITY CONTROL', project_name: 'Injector Brand Joint - SUBARU', url: '#' },
+  { department: 'R&D QUALITY CONTROL', project_name: 'Injector Brand Joint - SUZUKI', url: '#' },
+  { department: 'R&D QUALITY CONTROL', project_name: 'Injector Brand Joint - TOYOTA', url: '#' },
+  { department: 'R&D QUALITY CONTROL', project_name: 'KPI ผลงานแผนกมาตรฐาน (ET)', url: '#' },
+  { department: 'R&D QUALITY CONTROL', project_name: 'AirVision - Inspection Report Evaporator', url: '#' },
+  { department: 'SALE', project_name: 'AS : Dashboard', url: '#' },
+  { department: 'SALE', project_name: 'CS1 : Dashboard', url: '#' },
+  { department: 'SALE', project_name: 'HOT Tracking', url: '#' },
+  { department: 'SALE', project_name: 'HOT Tracking : Dashboard', url: '#' },
+  { department: 'SALE', project_name: 'Dashboard ลูกค้าสัมพันธ์', url: '#' }
+];
 
 const dataHandler = {
   onDataChanged(data) {
@@ -80,11 +104,16 @@ function createLocalDataSdk() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       const data = raw ? JSON.parse(raw) : [];
-      return Array.isArray(data) ? data : [];
+      return Array.isArray(data) && data.length ? data : seedDefaultProjects();
     } catch (error) {
       console.error('Local data read failed', error);
-      return [];
+      return seedDefaultProjects();
     }
+  }
+  function seedDefaultProjects() {
+    const data = DEFAULT_PROJECTS.map((item, index) => ({ ...item, id: `default-${index + 1}` }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    return data;
   }
   function writeData(data) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
