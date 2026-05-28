@@ -126,8 +126,86 @@ function createLocalDataSdk() {
   };
 }
 
+function createServerDataSdk(fallbackSdk) {
+  let handler = null;
+  async function request(method, body) {
+    const options = {
+      method,
+      headers: { 'Content-Type': 'application/json' }
+    };
+    if (body) options.body = JSON.stringify(body);
+    const response = await fetch('/api/projects', options);
+    if (!response.ok) throw new Error(`API ${method} failed`);
+    return response.json();
+  }
+  function notify(projects) {
+    if (handler) handler.onDataChanged(projects);
+  }
+  return {
+    async init(nextHandler) {
+      handler = nextHandler;
+      try {
+        const result = await request('GET');
+        let projects = result.projects || [];
+        const localProjects = readStoredProjects();
+        if (projects.length === 0 && localProjects.length > 0) {
+          const migrated = await request('PUT', { projects: localProjects });
+          projects = migrated.projects || [];
+        }
+        notify(projects);
+        return { isOk: true };
+      } catch (error) {
+        console.error('Server data init failed, using local storage', error);
+        const result = await fallbackSdk.init(nextHandler);
+        return { ...result, isRemote: false };
+      }
+    },
+    async create(item) {
+      try {
+        const result = await request('POST', item);
+        notify(result.projects || []);
+        return { isOk: true, data: result.project };
+      } catch (error) {
+        console.error('Server create failed, using local storage', error);
+        return fallbackSdk.create(item);
+      }
+    },
+    async delete() {
+      try {
+        const result = await request('DELETE');
+        notify(result.projects || []);
+        return { isOk: true };
+      } catch (error) {
+        console.error('Server delete failed, using local storage', error);
+        return fallbackSdk.replaceAll([]);
+      }
+    },
+    async replaceAll(items) {
+      try {
+        const result = await request('PUT', { projects: items });
+        notify(result.projects || []);
+        return { isOk: true, data: result.projects || [] };
+      } catch (error) {
+        console.error('Server replace failed, using local storage', error);
+        return fallbackSdk.replaceAll(items);
+      }
+    }
+  };
+}
+
+function readStoredProjects() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const data = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(data) || isOldSeedData(data)) return [];
+    return data;
+  } catch (error) {
+    return [];
+  }
+}
+
 async function initApp() {
-  if (!window.dataSdk) window.dataSdk = createLocalDataSdk();
+  if (!window.dataSdk) window.dataSdk = createServerDataSdk(createLocalDataSdk());
   try {
     const r = await window.dataSdk.init(dataHandler);
     if (!r.isOk) console.error('SDK init failed');
